@@ -86,7 +86,7 @@ player_bio_data <-
 
 weighted_team_data <-
   player_bio_data %>%
-  dplyr::group_by(season) %>%
+  dplyr::group_by(team, season) %>%
   dplyr::mutate(
     # set draft_ov to 218 if undrafted
     draft_ov = ifelse(is.na(draft_ov), 218, draft_ov),
@@ -127,10 +127,10 @@ weighted_team_data %>%
 
 weighted_team_data %>%
   dplyr::filter(season == "20-21") %>%
-  ggplot2::ggplot(ggplot2::aes(x = team, y = weighted_heights, fill = 1)) +
+  ggplot2::ggplot(ggplot2::aes(x = team, y = weighted_height, fill = 1)) +
   ggplot2::geom_bar(stat = "identity") +
   ggplot2::geom_text(ggplot2::aes(
-    label = (weighted_heights) %>% round(1), vjust = -1)
+    label = (weighted_height) %>% round(1), vjust = -1)
   ) +
   ggplot2::theme_minimal() +
   ggplot2::ggtitle("NHL Team Height Weighted By TOI", "2020-21 Season") +
@@ -141,10 +141,10 @@ weighted_team_data %>%
 
 weighted_team_data %>%
   dplyr::filter(season == "20-21") %>%
-  ggplot2::ggplot(ggplot2::aes(x = team, y = weighted_weights, fill = 1)) +
+  ggplot2::ggplot(ggplot2::aes(x = team, y = weighted_weight, fill = 1)) +
   ggplot2::geom_bar(stat = "identity") +
   ggplot2::geom_text(
-    ggplot2::aes(label = (weighted_weights) %>% round(1), vjust = -1)
+    ggplot2::aes(label = (weighted_weight) %>% round(1), vjust = -1)
   ) +
   ggplot2::theme_minimal() +
   ggplot2::ggtitle("NHL Team Weight Weighted By TOI", "2020-21 Season") +
@@ -155,10 +155,10 @@ weighted_team_data %>%
 
 weighted_team_data %>%
   dplyr::filter(season == "20-21") %>%
-  ggplot2::ggplot(ggplot2::aes(x = team, y = weighted_bmis, fill = 1)) +
+  ggplot2::ggplot(ggplot2::aes(x = team, y = weighted_bmi, fill = 1)) +
   ggplot2::geom_bar(stat = "identity") +
   ggplot2::geom_text(
-    ggplot2::aes(label = (weighted_bmis) %>% round(1), vjust = -1)
+    ggplot2::aes(label = (weighted_bmi) %>% round(1), vjust = -1)
   ) +
   ggplot2::theme_minimal() +
   ggplot2::ggtitle("NHL Team BMI Weighted By TOI", "2020-21 Season") +
@@ -193,7 +193,7 @@ weighted_team_nationalities <-
     total_toi = sum(toi),
     toi_perc = toi / total_toi
   ) %>%
-  dplyr::group_by(nationality, add = T) %>%
+  dplyr::group_by(nationality, .add = T) %>%
   dplyr::summarise(weighted_nationality = sum(toi_perc))
 
 ## 2020-21 team nationality graph
@@ -222,8 +222,27 @@ weighted_team_nationalities %>%
 
 ## Trends graph
 
-# Team data is organized in columns, pivot_longer for faceting
-dplyr::bind_rows(weighted_team_data, weighted_team_nationalities) %>%
+# Re-do weighted data for league averages by season, pivot_longer for faceting
+player_bio_data %>%
+  dplyr::group_by(season) %>%
+  dplyr::mutate(
+    # set draft_ov to 218 if undrafted
+    draft_ov = ifelse(is.na(draft_ov), 218, draft_ov),
+    total_toi = sum(toi),
+    toi_perc = toi / total_toi,
+    weighted_days_on_earth = days_on_earth * toi_perc,
+    weighted_height = height * toi_perc,
+    weighted_weight = weight * toi_perc,
+    weighted_bmi = bmi * toi_perc,
+    weighted_draft = draft_ov * toi_perc
+  ) %>%
+  dplyr::summarise(
+    dplyr::across(
+      tidyselect::starts_with("weighted"),
+      sum
+    )
+  ) %>%
+  dplyr::bind_rows(weighted_team_nationalities) %>%
   tidyr::pivot_longer(
     cols = tidyselect::starts_with("weighted"),
     names_to = "descriptor"
@@ -262,7 +281,7 @@ dplyr::bind_rows(weighted_team_data, weighted_team_nationalities) %>%
         purrr::map(
           dplyr::pull(., season),
           function(season)
-            team_data %>%
+            weighted_team_data %>%
             dplyr::pull(season) %>%
             factor() %>%
             levels() %>%
@@ -275,7 +294,7 @@ dplyr::bind_rows(weighted_team_data, weighted_team_nationalities) %>%
   ggplot2::scale_x_continuous(
     breaks =
       # breaks so each season appears on x axis
-      team_data %>%
+      weighted_team_data %>%
       dplyr::pull(season) %>%
       factor() %>%
       levels() %>%
@@ -283,7 +302,7 @@ dplyr::bind_rows(weighted_team_data, weighted_team_nationalities) %>%
       seq(),
     labels =
       # set so seasons appear as season, not numbers 1-14
-      team_data %>%
+      weighted_team_data %>%
       dplyr::pull(season) %>%
       factor() %>%
       levels()
