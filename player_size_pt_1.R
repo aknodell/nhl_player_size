@@ -4,6 +4,8 @@
 ## tidyselect, tidyr, ggplot2
 ###
 
+library(magrittr)
+
 ## Read skater standard table
 
 player_data_base <-
