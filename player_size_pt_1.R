@@ -45,6 +45,7 @@ player_bio_data <-
   dplyr::left_join(
     player_data_base %>%
       dplyr::select(api_id) %>%
+      # filter unique to make it faster
       dplyr::distinct() %>%
       dplyr::mutate(
         api_id = as.character(api_id),
