@@ -135,7 +135,7 @@ team_level_graphs <-
     metrics,
     function(metric) {
       full_team_weighted_averages %>%
-        get_team_level_strength_state_deltas(metric) %>%
+        get_strength_state_deltas(metric) %>%
         ggplot2::ggplot(ggplot2::aes(x = delta, fill = `Strength State`)) +
         ggplot2::geom_density(alpha = 0.33) +
         ggplot2::theme_minimal() +
