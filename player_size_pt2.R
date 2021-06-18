@@ -18,7 +18,7 @@ full_player_toi_data <-
   ) %>%
   dplyr::left_join(
     # Stored locally
-    readr::read_csv("eh_war.csv") %>%
+    readr::read_csv(.eh_war_filepath) %>%
       dplyr::rename_with(.fn = stringr::str_to_lower) %>%
       # I like using PK better than SH, so I renamed that one
       dplyr::select(player, team, season, toi_ev, toi_pp, toi_pk = toi_sh)
