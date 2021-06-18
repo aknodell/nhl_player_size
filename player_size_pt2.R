@@ -210,7 +210,7 @@ purrr::map(
         purrr::map(
           dplyr::pull(., season),
           function(season)
-            player_war_data %>%
+            full_player_toi_data %>%
             dplyr::pull(season) %>%
             factor() %>%
             levels() %>%
@@ -227,7 +227,7 @@ purrr::map(
   ggplot2::scale_x_continuous(
     breaks =
       # breaks so each season appears on x axis
-      player_war_data %>%
+      full_player_toi_data %>%
       dplyr::pull(season) %>%
       factor() %>%
       levels() %>%
@@ -235,7 +235,7 @@ purrr::map(
       seq(),
     labels =
       # set so seasons appear as season, not numbers 1-14
-      player_war_data %>%
+      full_player_toi_data %>%
       dplyr::pull(season) %>%
       factor() %>%
       levels()
