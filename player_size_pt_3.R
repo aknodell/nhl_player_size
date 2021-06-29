@@ -1,3 +1,11 @@
+#####
+## Packages used:
+## magrittr, readr, dplyr, stringr, purrr, tibble, corrr, knitr
+## tidyselect, tidyr, ggplot2
+###
+
+library(magrittr)
+
 ## pivot longer to make analysis by strength state easier
 
 full_team_weighted_averages <-
@@ -70,7 +78,8 @@ full_team_weighted_average_deltas <-
           .fn = stringr::str_replace,
           pattern = "metric",
           replacement = metric
-        ) %>% dplyr::ungroup()
+        ) %>% 
+        dplyr::ungroup()
     }
   ) %>% 
   purrr::reduce(dplyr::left_join)
@@ -344,6 +353,16 @@ strength_state_correlation_heatmaps <-
           values_to = "cor"
         ) %>%
         dplyr::mutate(
+          p_value =
+            purrr::map(
+              cor,
+              function(c) {
+                (c / sqrt((1 - (c ^ 2)) / (422))) %>%
+                  pt(422, lower.tail = c < 0) %>%
+                  magrittr::multiply_by(2)
+              }
+            ) %>% 
+            purrr::flatten_dbl(),
           term = 
             term %>%
             stringr::str_replace_all(
@@ -389,11 +408,22 @@ strength_state_correlation_heatmaps <-
                 ) %>%
                 rev()
             )
-        ) %>%
+        ) %>% 
         ggplot2::ggplot(ggplot2::aes(x = term, y = y_labels, fill = cor)) +
         ggplot2::geom_tile() +
         ggplot2::geom_text(
-          ggplot2::aes(label = cor %>% round(2)), color = "white"
+          ggplot2::aes(
+            label = 
+              cor %>% 
+              round(2) %>% 
+              as.character() %>%
+              stringr::str_c(
+                ifelse(p_value < 0.05, "*", ""),
+                ifelse(p_value < 0.01, "*", ""),
+                ifelse(p_value < 0.001, "*", "")
+              )
+          ),
+          color = "white"
         ) +
         ggplot2::scale_fill_viridis_c("Correlation", limits = c(-1, 1)) +
         ggplot2::theme_minimal() +
@@ -520,6 +550,74 @@ points_percentage_model_3 <-
       points_perc ~ weighted_days_on_earth_delta_EV + weighted_weight_delta_PP
   )  
 
+## Peek at Models
+
 points_percentage_model_1 %>% summary()
 points_percentage_model_2 %>% summary()
 points_percentage_model_3 %>% summary()
+
+points_percentage_model_outputs <-
+  purrr::map2(
+  list(
+    points_percentage_model_1,
+    points_percentage_model_2,
+    points_percentage_model_3
+  ),
+  c("Model 1", "Model 2", "Model 3"),
+  function(model, number) {
+    model$model %>%
+      tibble::tibble() %>%
+      dplyr::mutate(
+        pred = model$fitted.values,
+        residuals = model$residuals,
+        model_number = number
+      ) %>%
+      dplyr::select(points_perc, pred, residuals, model_number)
+  }
+) %>% 
+  dplyr::bind_rows()
+
+## Plots
+
+points_percentage_model_outputs %>%
+  ggplot2::ggplot(
+    ggplot2::aes(x = points_perc / 100, y = pred / 100, color = model_number)
+  ) +
+  ggplot2::geom_abline(slope = 1) +
+  ggplot2::geom_point(alpha = 0.33) +
+  ggplot2::facet_grid( ~ model_number) +
+  ggplot2::scale_color_viridis_d() +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("Actual vs Predicted Points Percentages") +
+  ggplot2::xlab("Actual Points Percentage") +
+  ggplot2::ylab("Predicted Points Percentage") +
+  ggplot2::scale_x_continuous(labels = scales::percent) +
+  ggplot2::scale_y_continuous(labels = scales::percent) +
+  ggplot2::theme(legend.position = "none")
+
+points_percentage_model_outputs %>%
+  ggplot2::ggplot(
+    ggplot2::aes(x = points_perc / 100, y = residuals, color = model_number)
+  ) +
+  ggplot2::geom_point(alpha = 0.33) +
+  ggplot2::geom_smooth(method = "lm") +
+  ggplot2::facet_grid( ~ model_number) +
+  ggplot2::scale_color_viridis_d() +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("Predicted Points Percentages vs Residuals") +
+  ggplot2::xlab("Predicted Points Percentage") +
+  ggplot2::ylab("Residual") +
+  ggplot2::scale_x_continuous(labels = scales::percent) +
+  ggplot2::theme(legend.position = "none")
+
+points_percentage_model_outputs %>%
+  ggplot2::ggplot(ggplot2::aes(sample = residuals, color = model_number)) +
+  ggplot2::stat_qq() +
+  ggplot2::stat_qq_line(size = 1) +
+  ggplot2::facet_grid( ~ model_number) +
+  ggplot2::scale_color_viridis_d() +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("Residual QQ Plots") +
+  ggplot2::xlab("Theoretical Quantiles") +
+  ggplot2::ylab("Sample Quantiles") +
+  ggplot2::theme(legend.position = "none")
