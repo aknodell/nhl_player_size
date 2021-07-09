@@ -11,7 +11,7 @@ library(magrittr)
 full_player_toi_data <-
   # Read the bio data from my google sheet
   googlesheets4::range_speedread(
-    "15_9h7RNDA2tM65jk_WdZa3KfO9yXQiLWUBtccr9nr6w", "player_bio_data"
+    .gs_sheet_key, "player_bio_data"
   ) %>%
   dplyr::select(
     player, team, season, toi, days_on_earth, height, weight, bmi, draft_ov
